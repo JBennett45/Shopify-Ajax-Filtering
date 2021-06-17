@@ -1,0 +1,230 @@
+<!-- Setup Collection Tags -->
+<!-- save to a variable the tags within each section, in this case brands, colours and price so a tag example would be brands-hollister -->
+{%- capture brands -%}
+{%- for tag in collections[collection.handle].tags -%}
+  {%- if tag contains 'brands' -%}
+    {%- assign tag_patterns = tag | split: '-' -%}
+    <li class="collection-sidebar__filter-item main-filter" data-tag="{{ tag | handle }}">{{ tag_patterns[1] }}</li>
+  {%- endif -%}
+{%- endfor -%}
+{%- endcapture -%}
+{%- capture colours -%}
+{%- for tag in collections[collection.handle].tags -%}
+  {%- if tag contains 'colour' -%}
+    {%- assign tag_patterns = tag | split: '-' -%}
+    <li class="collection-sidebar__filter-item main-filter" data-tag="{{ tag | handle }}">{{ tag_patterns[1] }}</li>
+  {%- endif -%}
+{%- endfor -%}
+{%- endcapture -%}
+{%- capture pricerange -%}
+{%- for tag in collections[collection.handle].tags -%}
+  {%- if tag contains 'price' -%}
+    {%- assign tag_patterns = tag | split: '-' -%}
+    <li class="collection-sidebar__filter-item main-filter" data-tag="{{ tag | handle }}">{{ tag_patterns[1] }}</li>
+  {%- endif -%}
+{%- endfor -%}
+{%- endcapture -%}
+<!-- end capture vars -->
+<!-- setup frontend -->
+<section id="categoryWrapMain">
+  <div class="page-width">
+    <!-- sidebar -->
+    <section id="sidebarWrap_Ll">
+      <form method="get" action="/search">
+        <input type="text" name="q" />
+        <input  type="submit" value="Search" />
+      </form>
+      <a href="{{ collection.url }}">Reset Filters</a>
+      <!-- brands - run through each brands tag and display them -->
+      <div class="collection-sidebar-typee" data-collection-url="https://{{ shop.domain }}{{ collection.url }}" data-section-id="collection-sidebar" data-section-type="collection-sidebar">
+        <h3 class="collection-sidebar__heading accordion-heading">Brands <i class="fa fa-plus" aria-hidden="true"></i></h3>
+        <div class="collection-sidebar__content accordion-content">
+          <div class="collection-sidebar__categories-filter">
+            <ul class="collection-sidebar__filter-items">
+              {{ brands }}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- same with colour -->
+      <div class="collection-sidebar-typee" data-collection-url="https://{{ shop.domain }}{{ collection.url }}" data-section-id="collection-sidebar" data-section-type="collection-sidebar">
+        <h3 class="collection-sidebar__heading accordion-heading">Colour <i class="fa fa-plus" aria-hidden="true"></i></h3>
+        <div class="collection-sidebar__content accordion-content" style="display:none;">
+          <div class="collection-sidebar__categories-filter">
+            <ul class="collection-sidebar__filter-items">
+              {{ colours }}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- same with price -->
+      <div class="collection-sidebar-typee" data-collection-url="https://{{ shop.domain }}{{ collection.url }}" data-section-id="collection-sidebar" data-section-type="collection-sidebar">
+        <h3 class="collection-sidebar__heading accordion-heading">Price <i class="fa fa-plus" aria-hidden="true"></i></h3>
+        <div class="collection-sidebar__content accordion-content" style="display:none;">
+          <div class="collection-sidebar__categories-filter">
+            <ul class="collection-sidebar__filter-items">
+              {{ pricerange }}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p>Tags are setup by the naming convention "name-what you want to display". As long as that's being captured as above, the sidebar will populate these categories and filter on click.</p>
+    </section>
+    <!-- Front end of products/filter results -->
+    <section id="productsWrap_Ll">
+    	<div class="collection-grid {% if categories == blank and filters == blank %}full-width{% endif %}">
+        <span class="js-product-grid__count">Showing: {{ collection.products_count }}</span> products</span>
+        {% paginate collection.products by 8 %}
+          {%- assign products_count = 0 -%}
+          <div id="AjaxinateLoop" class="collection-grid__products" data-products-count="{{ collection.products_count }}">
+            {% if collection.products_count > 0 %}
+              {% for product in collection.products %}
+                {%- assign products_count = products_count | plus: 1 -%}
+                {% include 'product-card-grid' %}
+              {% endfor %}
+            {% else %}
+              <p class="collection-grid__empty">{{ 'collections.general.no_matches' | t }}</p>
+            {% endif %}
+          </div>
+          <div id="AjaxinatePagination">
+            {% if paginate.next %}
+              <a href="{{ paginate.next.url }}" class="collection__load-more">Load More</a>
+            {% endif %}
+          </div>
+        {% endpaginate %}
+      </div>
+      <div class="collection__mainLoading"></div>
+    </section>
+  </div>
+</section>
+
+<!-- scripts for load more and filter -->
+<script>
+// consts steup //
+const cssClasses = {
+  collectionSidebar: '.collection-sidebar-typee',
+  accordionHeading: '.accordion-heading',
+  accordionContent: '.accordion-content',
+  filterItem: '.collection-sidebar__filter-item',
+  filter: '.collection-sidebar__filter-items',
+};
+
+// Accordion
+const accordionHeading = $(cssClasses.accordionHeading);
+// load more setup //
+var endlessScroll = new Ajaxinate({
+  container: '#AjaxinateLoop',
+  pagination: '#AjaxinatePagination',
+  method: 'click',
+  offset: 150,
+  beforeLoad: function () {
+    $('.collection__mainLoading').addClass('ajax-loading');
+  },
+  callback: function () {
+    $('.collection__mainLoading').removeClass('ajax-loading');
+  }
+});
+
+accordionHeading.on('click', function () {
+  const parentItem = $(this).parent();
+  const content = parentItem.find(cssClasses.accordionContent).first();
+
+  $(this).toggleClass('open');
+  content.slideToggle();
+});
+
+// Tag filter
+const url = window.location.origin + window.location.pathname;
+const filterItem = $(cssClasses.filterItem);
+let collectionUrl = $(cssClasses.collectionSidebar).data('collection-url');
+var productsContainer = $('.collection-grid__products');
+// active state //
+filterItem.each(function () {
+  const tag = $(this).data('tag');
+  if (url.indexOf(tag) !== -1) {
+    $(this).addClass('active');
+    console.log($(this), 'add class active');
+    const accordionHeading = $(this).parent().parent().find(cssClasses.accordionHeading);
+    if (accordionHeading.length !== 0) {
+      accordionHeading.trigger('click');
+    }
+  }
+});
+// filter functionality //
+filterItem.on('click', function () {
+  let search = window.location.search;
+  if (search.indexOf('page') !== -1) {
+    const pageParam = search.split("&")[0];
+    search = search.replace(pageParam, '').replace('&', '?');
+  }
+  const filter = $(this).parents('[data-filter]');
+  const filterItems = filter.find(cssClasses.filterItem);
+
+  $(this).toggleClass('active');
+
+  var activeItems = $('.collection-sidebar-typee').find(cssClasses.filterItem + '.active');
+  var activeTags = [];
+
+  activeItems.each(function (index, el) {
+    var tag = $(el).attr('data-tag');
+
+    if (tag) {
+        activeTags.push(tag);
+    }
+  });
+
+  var tagsUrl = activeTags.join('+');
+
+  var newUrl = collectionUrl;
+
+  if (tagsUrl) {
+      newUrl += '/' + tagsUrl;
+  }
+
+  newUrl += search;
+
+  $('.collection__mainLoading').addClass('ajax-loading');
+
+  console.log(newUrl);
+  console.log('---');
+  // ajax //
+  $.get({
+    url: newUrl,
+    success: function (data) {
+      var newProductsWrapper = $(data).find(".collection-grid__products");
+      var newProductsHtml = newProductsWrapper.html();
+      productsContainer.html(newProductsHtml);
+
+      var newItemCount = newProductsWrapper.attr('data-products-count');
+      $('.js-product-grid__count').text(newItemCount);
+
+      var newPaginationHtml = $(data).find("#AjaxinatePagination").html();
+      $('#AjaxinatePagination').html(newPaginationHtml);
+      var pagination = $("#AjaxinatePagination");
+
+      if (pagination.length) {
+          pagination.html(newPaginationHtml);
+
+          new Ajaxinate({
+              container: '#AjaxinateLoop',
+              pagination: '#AjaxinatePagination',
+              method: 'click',
+              offset: 150,
+              beforeLoad: function () {
+                  $('.collection__mainLoading').addClass('ajax-loading');
+              },
+              callback: function () {
+                  $('.collection__mainLoading').removeClass('ajax-loading');
+              }
+          });
+      }
+
+      history.pushState({
+          page: newUrl
+      }, null, newUrl);
+
+      $('.collection__mainLoading').removeClass('ajax-loading');
+    }
+  })
+});
+</script>
